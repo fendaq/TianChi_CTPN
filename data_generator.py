@@ -1,62 +1,52 @@
 # -*- coding: utf-8 -*-
 
 
-import os
-import random
-from PIL import Image,ImageDraw,ImageFont 
-
-import re
+import os,random,re,sys
+from PIL import Image,ImageDraw,ImageFont
 from collections import Counter
 
-import sys
 
 
 #
 # change this value to change the default purpose of data-generating
 #
-data_for_training = 0                # 1 for training, 0 for test  
+# data_for_training = 0                # 1 for training, 0 for test
 # 
 
 
 
-#
-if len(sys.argv) >= 2:
-    #
-    data_for_training = int(sys.argv[1])
-    #
-    if data_for_training != 0 and data_for_training != 1:
-        print('The parameter should be 0 or 1.')
-        print('Set to 0 by default.')
-        data_for_training = 0
-        #
+# #
+# if len(sys.argv) >= 2:
+#     #
+#     data_for_training = int(sys.argv[1])
+#     #
+#     if data_for_training != 0 and data_for_training != 1:
+#         print('The parameter should be 0 or 1.')
+#         print('Set to 0 by default.')
+#         data_for_training = 0
+#         #
 
 #
-if data_for_training > 0:
-    dir_data_generated = './data_generated'
-    NumPerImage = 200
-else:
-    dir_data_generated = './data_test'
-    NumPerImage = 3
-#
+# if data_for_training > 0:
+#     dir_data_generated = 'data_generated'
+#     NumPerImage = 200
+# else:
+#     dir_data_generated = 'data_test'
+#     NumPerImage = 3
+# #
 
 
 #
-list_fonts = [#'C:\Windows\Fonts\Arial.ttf',
-              #'C:\Windows\Fonts\Arialbd.ttf',
-              #'C:\Windows\Fonts\courbd.ttf',
-              #'C:\Windows\Fonts\courbi.ttf',
-              #'C:\Windows\Fonts\CENTAUR.TTF',
-              #'C:\Windows\Fonts\BASKVILL.TTF',
-              'fonts/tecnico_bold.ttf',
+list_fonts = ['fonts/tecnico_bold.ttf',
               'fonts/tecnico_bolditalic.ttf',
               'fonts/tecnico_regular.ttf',
               'fonts/AnisaSans.ttf',
               'fonts/SEA_GARDENS.ttf']
 #
 
-
+dir_data_generated = 'data_generated'
 #
-dir_images_base = './images_base'
+dir_images_base = 'images_base'
 #
 dir_images_gen = dir_data_generated + '/images'
 dir_contents_gen = dir_data_generated + '/contents'
@@ -85,22 +75,17 @@ list_sizes = [26, 28, 30, 31, 32, 33, 34, 36, 40, 44]
 #
 
 #
-if not os.path.exists(dir_data_generated): os.mkdir(dir_data_generated)
-if not os.path.exists(dir_images_gen): os.mkdir(dir_images_gen)
-if not os.path.exists(dir_contents_gen): os.mkdir(dir_contents_gen)
-#
+# if not os.path.exists(dir_data_generated): os.mkdir(dir_data_generated)
+# if not os.path.exists(dir_images_gen): os.mkdir(dir_images_gen)
+# if not os.path.exists(dir_contents_gen): os.mkdir(dir_contents_gen)
+# #
 
 #
 def extractWords(text): return re.findall(r'\w+', text.lower())
 #
 WORDS = Counter(extractWords(open(words_file, encoding="utf-8").read()))
 #
-#Add new word
-#WORDS['history'] = 100
-#WORDS['bed/room'] = 100
-#
-# for key in WORDS: print(key)
-#
+
 #
 def generateRandomDigital():
     #
@@ -280,7 +265,7 @@ def getFilesInDirect(path, str_dot_ext):
             file_list.append(file_path)
             #print(file_path)
         #
-    return file_list;
+    return file_list
     #
 
 #

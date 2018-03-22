@@ -4,7 +4,6 @@ import os
 
 from PIL import Image,ImageDraw
 import numpy as np
-
 from math import ceil, floor
 
 
@@ -17,54 +16,39 @@ dir_contents = dir_data + '/contents'
 '''
 
 #
-def getFilesInDirect(path, str_dot_ext):
-    file_list = []
-    for file in os.listdir(path):
-        file_path = os.path.join(path, file)  
-        if os.path.splitext(file_path)[1] == str_dot_ext:  
-            file_list.append(file_path)
-            #print(file_path)
-        #
-    return file_list;
-    #
-#
+def getFilesInDirect(path):
+    '''
+    得到image和contents的path
+    :param path:
+    :return:
+    '''
+    file_list = list(map(lambda x: path+'images/'+x ,os.listdir(path+'images/')))
+    text_list = list(map(lambda x: path+'contents/'+os.path.splitext(x)[0]+'.txt' ,os.listdir(path+'contents/')))
+    return file_list, text_list
+
+
+
 def getImageSize(img_file):
     #
     img = Image.open(img_file)
     return img.size  # (width, height)
-    #
-#
-def getTargetTxtFile(img_file):
-    #
-    pre_dir = os.path.abspath(os.path.dirname(img_file)+os.path.sep+"..")
-    txt_dir = os.path.join(pre_dir, 'contents')
-    #
-    filename = os.path.basename(img_file)
-    arr_split = os.path.splitext(filename)
-    filename = arr_split[0] + '.txt'
-    #
-    txt_file = os.path.join(txt_dir, filename)
-    #
-    return txt_file
-    #
-#
+
 def getListContents(content_file):
-    #
+    '''
+    读取contents文件
+    :param content_file:
+    :return:
+    '''
     contents = []
-    #
     with open(content_file, 'r') as fp:
         lines = fp.readlines()
-    #
     for line in lines:
         arr_str = line.split('|')
         item = list(map(lambda x: int(x), arr_str[0].split('-')))
-        #
         contents.append([item, arr_str[1]])
-        #
     return contents
-#
-#
-#
+
+
 def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
     #
     # anchor_center = [hc, wc]
@@ -202,10 +186,8 @@ def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
     #
     return cls, ver, hor
     #
-#
-# util function
-#
-def getImageAndTargets(img_file, anchor_heights):
+
+def getImageAndTargets(img_file, content_file, anchor_heights):
     
     # img_data
     img = Image.open(img_file)
@@ -216,8 +198,7 @@ def getImageAndTargets(img_file, anchor_heights):
     #
     
     # texts
-    txt_file = getTargetTxtFile(img_file)
-    txt_list = getListContents(txt_file)
+    txt_list = getListContents(content_file)
     #
     
     # targets
@@ -229,38 +210,15 @@ def getImageAndTargets(img_file, anchor_heights):
     #
     width_feat = ceil(ceil(ceil(img_size[0]/2.0)/2.0)/2.0)
     height_feat = floor(ceil(ceil(img_size[1]/2.0)/2.0)/3.0) - 2
-    #
-    
-    #
+
+    # k个anchors
     num_anchors = len(anchor_heights)
     #
     target_cls = np.zeros((height_feat, width_feat, 2*num_anchors))
     target_ver = np.zeros((height_feat, width_feat, 2*num_anchors))
     target_hor = np.zeros((height_feat, width_feat, 2*num_anchors))
     #
-    
-    #
-    # detection
-    #
-    # [3,1; 1,1],
-    # [9,2; 3,2], [9,2; 3,2], [9,2; 3,2]
-    # [18,4; 6,4], [18,4; 6,4], [18,4; 6,4]
-    # [36,8; 12,8], [36,8; 12,8], [36,8; 12,8], 
-    #
-    # anchor width:  8,
-    # anchor height: 12, 24, 36, 48,
-    #
-    # feature_layer --> receptive_field
-    # [0,0] --> [0:36, 0:8]
-    # [0,1] --> [0:36, 8:8+8]
-    # [i,j] --> [12*i:36+12*i, 8*j:8+8*j]
-    #
-    # feature_layer --> anchor_center
-    # [0,0] --> [18, 4]
-    # [0,1] --> [18, 4+8]
-    # [i,j] --> [18+12*i, 4+8*j]
-    #
-    
+
     #
     # anchor_width = 8
     #
@@ -286,7 +244,17 @@ def getImageAndTargets(img_file, anchor_heights):
     #
     return [img_data], [height_feat, width_feat], target_cls, target_ver, target_hor
     #
-#
+
+image,handw,cls,ver,hor = getImageAndTargets('data_generated/images/hhh_generated_0.png',
+                   'data_generated/contents/hhh_generated_0.txt',
+                   [12, 24, 36])
+print(image[0].shape)
+print(handw[0],handw[1])
+print(cls.shape)
+print(ver.shape)
+print(hor.shape)
+
+
 def transResults(r_cls, r_ver, r_hor, anchor_heights, threshold):
     #
     # anchor width: 8,
@@ -372,49 +340,49 @@ def drawTextBox(img_file, text_bbox):
     #
 
 #
-if __name__ == '__main__':
-    #
-    print('draw target bbox ... ')
-    #
-    import model_meta as meta
-    #
-    list_imgs = getFilesInDirect(meta.dir_images_valid, meta.str_dot_img_ext)
-    #
-    curr = 0
-    NumImages = len(list_imgs)
-    #
-    # valid_result save-path
-    if not os.path.exists(meta.dir_results_valid): os.mkdir(meta.dir_results_valid)
-    #
-    for img_file in list_imgs:
-        #
-        img_data, feat_size, target_cls, target_ver, target_hor = \
-        getImageAndTargets(img_file, meta.anchor_heights)
-        #
-        # img_size = getImageSize(img_file) # width, height
-        #
-        curr += 1
-        print('curr: %d / %d' % (curr, NumImages))
-        #
-        filename = os.path.basename(img_file)
-        arr_str = os.path.splitext(filename)
-        #
-        # image
-        r = Image.fromarray(img_data[0][:,:,0] *255).convert('L')
-        g = Image.fromarray(img_data[0][:,:,1] *255).convert('L')
-        b = Image.fromarray(img_data[0][:,:,2] *255).convert('L')
-        #
-        file_target = os.path.join(meta.dir_results_valid, 'target_' +arr_str[0] + '.png')
-        img_target = Image.merge("RGB", (r, g, b))
-        img_target.save(file_target)
-        #
-        # trans
-        text_bbox = transResults(target_cls, target_ver, target_hor, meta.anchor_heights, meta.threshold)
-        #
-        drawTextBox(file_target, text_bbox)
-        #
-    #
-    print('draw end.')
-    #
+# if __name__ == '__main__':
+#     #
+#     print('draw target bbox ... ')
+#     #
+#     import model_meta as meta
+#     #
+#     list_imgs = getFilesInDirect(meta.dir_images_valid, meta.str_dot_img_ext)
+#     #
+#     curr = 0
+#     NumImages = len(list_imgs)
+#     #
+#     # valid_result save-path
+#     if not os.path.exists(meta.dir_results_valid): os.mkdir(meta.dir_results_valid)
+#     #
+#     for img_file in list_imgs:
+#         #
+#         img_data, feat_size, target_cls, target_ver, target_hor = \
+#         getImageAndTargets(img_file, meta.anchor_heights)
+#         #
+#         # img_size = getImageSize(img_file) # width, height
+#         #
+#         curr += 1
+#         print('curr: %d / %d' % (curr, NumImages))
+#         #
+#         filename = os.path.basename(img_file)
+#         arr_str = os.path.splitext(filename)
+#         #
+#         # image
+#         r = Image.fromarray(img_data[0][:,:,0] *255).convert('L')
+#         g = Image.fromarray(img_data[0][:,:,1] *255).convert('L')
+#         b = Image.fromarray(img_data[0][:,:,2] *255).convert('L')
+#         #
+#         file_target = os.path.join(meta.dir_results_valid, 'target_' +arr_str[0] + '.png')
+#         img_target = Image.merge("RGB", (r, g, b))
+#         img_target.save(file_target)
+#         #
+#         # trans
+#         text_bbox = transResults(target_cls, target_ver, target_hor, meta.anchor_heights, meta.threshold)
+#         #
+#         drawTextBox(file_target, text_bbox)
+#         #
+#     #
+#     print('draw end.')
+
 
 

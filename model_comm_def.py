@@ -2,7 +2,6 @@
 
 
 import tensorflow as tf
-
 import zoo_layers as layers
 
 
