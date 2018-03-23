@@ -280,10 +280,10 @@ class ModelDetect():
                 #
         
     
-    def train_and_valid(self):
+    def train_and_valid(self, data_path='train/'):
         #
         # get training images
-        list_images_train = model_detect_data.getFilesInDirect(meta.dir_images_train, meta.str_dot_img_ext)
+        list_images_train = model_detect_data.getFilesInDirect(data_path)
         #      
         # model save-path
         if not os.path.exists(meta.model_detect_dir): os.mkdir(meta.model_detect_dir)

@@ -18,13 +18,26 @@ dir_contents = dir_data + '/contents'
 #
 def getFilesInDirect(path):
     '''
-    得到image和contents的path
+    得到image的path
     :param path:
     :return:
     '''
     file_list = list(map(lambda x: path+'images/'+x ,os.listdir(path+'images/')))
-    text_list = list(map(lambda x: path+'contents/'+os.path.splitext(x)[0]+'.txt' ,os.listdir(path+'contents/')))
-    return file_list, text_list
+    return file_list
+
+
+
+def getTargetTxtFile(img_file):
+    #
+    pre_dir = os.path.relpath(os.path.dirname(img_file)+os.path.sep+"..")
+    txt_dir = pre_dir + '/contents/'
+    filename = os.path.basename(img_file)
+    arr_split = os.path.splitext(filename)
+    filename = arr_split[0] + '.txt'
+    #
+    txt_file = txt_dir + filename
+    #
+    return txt_file
 
 
 
@@ -33,6 +46,21 @@ def getImageSize(img_file):
     img = Image.open(img_file)
     return img.size  # (width, height)
 
+# def getListContents(content_file):
+#     '''
+#     读取contents文件
+#     :param content_file:
+#     :return:
+#     '''
+#     contents = []
+#     with open(content_file, 'r',encoding='UTF-8') as fp:
+#         lines = fp.readlines()
+#     for line in lines:
+#         arr_str = line.split('|')
+#         item = list(map(lambda x: int(x), arr_str[0].split('-')))
+#         contents.append([item, arr_str[1]])
+#     return contents
+
 def getListContents(content_file):
     '''
     读取contents文件
@@ -40,13 +68,14 @@ def getListContents(content_file):
     :return:
     '''
     contents = []
-    with open(content_file, 'r') as fp:
+    with open(content_file, 'r',encoding='UTF-8') as fp:
         lines = fp.readlines()
     for line in lines:
-        arr_str = line.split('|')
-        item = list(map(lambda x: int(x), arr_str[0].split('-')))
-        contents.append([item, arr_str[1]])
+        str = line.split(',')
+        item = [int(float(str[0])), int(float(str[1])), int(float(str[4])), int(float(str[5]))]
+        contents.append([item, str[8]])
     return contents
+
 
 
 def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
@@ -82,7 +111,9 @@ def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
         # heigth_IoU: of the 4 anchors, choose the one with max height_IoU;
         #
         bbox = item[0]
+
         #
+
         # horizontal
         flag = 0    
         #
@@ -187,7 +218,7 @@ def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
     return cls, ver, hor
     #
 
-def getImageAndTargets(img_file, content_file, anchor_heights):
+def getImageAndTargets(img_file, anchor_heights):
     
     # img_data
     img = Image.open(img_file)
@@ -196,9 +227,9 @@ def getImageAndTargets(img_file, content_file, anchor_heights):
     #
     img_data = img_data[:,:,0:3]  # rgba
     #
-    
+
     # texts
-    txt_list = getListContents(content_file)
+    txt_list = getListContents(getTargetTxtFile(img_file))
     #
     
     # targets
@@ -244,15 +275,6 @@ def getImageAndTargets(img_file, content_file, anchor_heights):
     #
     return [img_data], [height_feat, width_feat], target_cls, target_ver, target_hor
     #
-
-image,handw,cls,ver,hor = getImageAndTargets('data_generated/images/hhh_generated_0.png',
-                   'data_generated/contents/hhh_generated_0.txt',
-                   [12, 24, 36])
-print(image[0].shape)
-print(handw[0],handw[1])
-print(cls.shape)
-print(ver.shape)
-print(hor.shape)
 
 
 def transResults(r_cls, r_ver, r_hor, anchor_heights, threshold):
