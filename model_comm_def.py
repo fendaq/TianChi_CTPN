@@ -128,8 +128,8 @@ def rnn_detect_layers(conv_feat, sequence_length, num_anchors):
     # Transpose to time-major order for efficiency
     #  --> [paddedSeqLen batchSize numFeatures]
     #
+    # 这里总是出错
     rnn_sequence = tf.transpose(conv_feat, perm = [1, 0, 2], name = 'time_major')
-    #
     rnn1 = layers.rnn_layer(rnn_sequence, sequence_length, rnn_size, 'bdrnn1')
     rnn2 = layers.rnn_layer(rnn1, sequence_length, rnn_size, 'bdrnn2')
     #rnn3 = rnn_layer(rnn2, sequence_length, rnn_size, 'bdrnn3')

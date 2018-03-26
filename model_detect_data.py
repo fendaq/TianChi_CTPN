@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import cv2
 
 from PIL import Image,ImageDraw
 import numpy as np
@@ -41,10 +42,13 @@ def getTargetTxtFile(img_file):
 
 
 
-def getImageSize(img_file):
-    #
-    img = Image.open(img_file)
-    return img.size  # (width, height)
+def getImageSize(img):
+    '''
+    返回image图片的尺寸
+    :param img_file:
+    :return:
+    '''
+    return (img.shape[1],img.shape[0])  # (width, height)
 
 # def getListContents(content_file):
 #     '''
@@ -221,11 +225,9 @@ def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
 def getImageAndTargets(img_file, anchor_heights):
     
     # img_data
-    img = Image.open(img_file)
+    img = cv2.imread(img_file)
     img_data = np.array(img, dtype = np.float32)/255
     # height, width, channel
-    #
-    img_data = img_data[:,:,0:3]  # rgba
     #
 
     # texts
@@ -233,7 +235,10 @@ def getImageAndTargets(img_file, anchor_heights):
     #
     
     # targets
-    img_size = getImageSize(img_file)
+    try:
+        img_size = getImageSize(img_data)
+    except:
+        print('这个路径出错了:',)
     # width, height    
     #
     # ///2, ///2, ///2,

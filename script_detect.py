@@ -12,8 +12,8 @@ from model_detect_wrap import ModelDetect
 
 import os
 #
-os.environ['CUDA_VISIBLE_DEVICES'] = '0' #使用 GPU 0
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0,1' # 使用 GPU 0，1
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0' #使用 GPU 0
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,0' # 使用 GPU 0，1
 #
 
 

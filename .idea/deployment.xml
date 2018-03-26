@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="10.90.6.19">
+  <component name="PublishConfigData" serverName="10.90.6.19">
     <serverData>
       <paths name="10.90.6.19">
         <serverdata>
@@ -9,14 +9,6 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="219.217.203.40">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/ctpn" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
     </serverData>
-    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

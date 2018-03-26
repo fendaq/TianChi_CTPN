@@ -21,7 +21,7 @@ import model_detect_data
 #
 TRAINING_STEPS = 10000
 #
-LEARNING_RATE_BASE = 0.001
+LEARNING_RATE_BASE = 0.0001
 DECAY_RATE = 0.9
 DECAY_STAIRCASE = True
 DECAY_STEPS = 1000
@@ -244,7 +244,7 @@ class ModelDetect():
                     img_data, feat_size, target_cls, target_ver, target_hor = \
                     model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
                     #
-                    img_size = model_detect_data.getImageSize(img_file) # width, height
+                    img_size = model_detect_data.getImageSize(img_data[0]) # width, height
                     #
                     w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
                     #
@@ -297,9 +297,8 @@ class ModelDetect():
             #
             saver = tf.train.Saver()
             #
-            # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.95, allocator_type = 'BFC')
-            # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            #
+            # GPU显存使用0.8
+            self.z_sess_config.gpu_options.per_process_gpu_memory_fraction = 0.8
             with tf.Session(config = self.z_sess_config) as sess:
                 #
                 tf.global_variables_initializer().run()
@@ -344,8 +343,7 @@ class ModelDetect():
                     # input data
                     img_data, feat_size, target_cls, target_ver, target_hor = \
                     model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
-                    #
-                    img_size = model_detect_data.getImageSize(img_file) # width, height
+                    img_size = model_detect_data.getImageSize(img_data[0]) # width, height
                     #
                     w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
                     #
@@ -380,14 +378,14 @@ class ModelDetect():
                         #                        
                     #
                     # validation
-                    if step % self.z_valid_freq == 0:
-                        #
-                        # ckpt
-                        saver.save(sess, os.path.join(meta.model_detect_dir, meta.model_detect_name), \
-                                   global_step = step)
-                        #
-                        self.validate(step, self.z_valid_option)
-                        #
+                    # if step % self.z_valid_freq == 0:
+                    #     #
+                    #     # ckpt
+                    #     saver.save(sess, os.path.join(meta.model_detect_dir, meta.model_detect_name), \
+                    #                global_step = step)
+                    #     #
+                    #     self.validate(step, self.z_valid_option)
+                    #     #
         #
 
 #
