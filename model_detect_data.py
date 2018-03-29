@@ -2,8 +2,9 @@
 
 import os
 import cv2
-
-from PIL import Image,ImageDraw
+from scipy import misc
+from PIL import Image, ImageDraw
+from skimage.transform import resize
 import numpy as np
 from math import ceil, floor
 
@@ -41,14 +42,15 @@ def getTargetTxtFile(img_file):
     return txt_file
 
 
-
-def getImageSize(img):
+def read_image(img_file):
     '''
-    返回image图片的尺寸
+    有些图片是四通道
     :param img_file:
     :return:
     '''
-    return (img.shape[1],img.shape[0])  # (width, height)
+    image = misc.imread(img_file)
+    image = image[:,:,:3]
+    return image
 
 # def getListContents(content_file):
 #     '''
@@ -60,14 +62,18 @@ def getImageSize(img):
 #     with open(content_file, 'r',encoding='UTF-8') as fp:
 #         lines = fp.readlines()
 #     for line in lines:
-#         arr_str = line.split('|')
-#         item = list(map(lambda x: int(x), arr_str[0].split('-')))
-#         contents.append([item, arr_str[1]])
+#         str = line.split(',')
+#         item = [int(float(str[0])), int(float(str[1])), int(float(str[4])), int(float(str[5]))]
+#         contents.append([item, str[8]])
 #     return contents
 
-def getListContents(content_file):
+def getListContents(content_file, rate):
     '''
     读取contents文件
+    得到[items]列表
+    其中item为：
+    x1,y1为rate比例缩放后的坐标
+    [x1,y1,x2,y2]
     :param content_file:
     :return:
     '''
@@ -76,11 +82,28 @@ def getListContents(content_file):
         lines = fp.readlines()
     for line in lines:
         str = line.split(',')
-        item = [int(float(str[0])), int(float(str[1])), int(float(str[4])), int(float(str[5]))]
+        x1 = int(min([float(str[0]), float(str[2]), float(str[4]), float(str[6])])*rate)
+        x2 = int(max([float(str[0]), float(str[2]), float(str[4]), float(str[6])])*rate)
+        y1 = int(min([float(str[1]), float(str[3]), float(str[5]), float(str[7])])*rate)
+        y2 = int(max([float(str[1]), float(str[3]), float(str[5]), float(str[7])])*rate)
+        item = [x1, y1, x2, y2]
         contents.append([item, str[8]])
     return contents
 
+def transform_image(img_path):
+    '''
+    将图片宽resize为512
+    :return:
+    '''
+    img = misc.imread(img_path)
 
+    img = img[:,:,0:3]
+    content_path = getTargetTxtFile(img_path)
+    width = 512
+    rate = width / img.shape[1]
+    height = int(img.shape[0] * rate)
+    new_img = resize(img, output_shape=(height, width))
+    return new_img, rate
 
 def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
     #
@@ -222,30 +245,28 @@ def calculateTargetsAt(anchor_center, txt_list, anchor_heights):
     return cls, ver, hor
     #
 
-def getImageAndTargets(img_file, anchor_heights):
+def getImageAndTargets(img_file, anchor_heights, feat_size):
     
-    # img_data
-    img = cv2.imread(img_file)
+    img, rate = transform_image(img_file)
     img_data = np.array(img, dtype = np.float32)/255
     # height, width, channel
     #
 
     # texts
-    txt_list = getListContents(getTargetTxtFile(img_file))
+    txt_list = getListContents(getTargetTxtFile(img_file), rate)
     #
     
     # targets
-    try:
-        img_size = getImageSize(img_data)
-    except:
-        print('这个路径出错了:',)
     # width, height    
     #
     # ///2, ///2, ///2,
     # ///2, ///2, //3, -2
     #
-    width_feat = ceil(ceil(ceil(img_size[0]/2.0)/2.0)/2.0)
-    height_feat = floor(ceil(ceil(img_size[1]/2.0)/2.0)/3.0) - 2
+    # width_feat = ceil(ceil(ceil(img_size[0]/2.0)/2.0)/2.0)
+    # height_feat = floor(ceil(ceil(img_size[1]/2.0)/2.0)/3.0) - 2
+
+    width_feat = feat_size[1]
+    height_feat = feat_size[0]
 
     # k个anchors
     num_anchors = len(anchor_heights)
@@ -278,7 +299,7 @@ def getImageAndTargets(img_file, anchor_heights):
             target_hor[h, w] = hor
             #
     #
-    return [img_data], [height_feat, width_feat], target_cls, target_ver, target_hor
+    return [img_data], target_cls, target_ver, target_hor
     #
 
 
@@ -344,10 +365,10 @@ def transResults(r_cls, r_ver, r_hor, anchor_heights, threshold):
     return list_bbox
     #
 #
-def drawTextBox(img_file, text_bbox):
+def drawTextBox(result_path, text_bbox):
     #
     #打开图片，画图
-    img_draw = Image.open(img_file)
+    img_draw = Image.open(result_path)
     #
     draw = ImageDraw.Draw(img_draw)
     #
@@ -363,7 +384,7 @@ def drawTextBox(img_file, text_bbox):
                    width=line_width, fill=(255,0,0))
         #
     #
-    img_draw.save(img_file)
+    img_draw.save(result_path)
     #
 
 #

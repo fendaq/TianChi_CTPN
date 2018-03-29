@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
-
+import cv2
 import os
 import time
 import random
 
 from PIL import Image
+from scipy import misc
 import numpy as np
 
 import tensorflow as tf
@@ -19,12 +20,12 @@ import model_detect_data
 
 
 #
-TRAINING_STEPS = 10000
+TRAINING_STEPS = 1000000
 #
-LEARNING_RATE_BASE = 0.0001
+LEARNING_RATE_BASE = 0.001
 DECAY_RATE = 0.9
 DECAY_STAIRCASE = True
-DECAY_STEPS = 1000
+DECAY_STEPS = 2000
 #
 MOMENTUM = 0.9
 #
@@ -86,45 +87,45 @@ class ModelDetect():
             return sess
         #
 
-    def predict(self, sess, img_file, out_dir = './results_prediction'):
-        #
-        # input data
-        img_data, feat_size, target_cls, target_ver, target_hor = \
-        model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
-        #
-        img_size = model_detect_data.getImageSize(img_file) # width, height
-        #
-        w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
-        #
-        # predication_result save-path
-        if not os.path.exists(out_dir): os.mkdir(out_dir)
-        #
-        with self.graph.as_default():              
-            #
-            feed_dict = {self.x: img_data, self.w: w_arr}
-            #
-            r_cls, r_ver, r_hor = sess.run([self.rnn_cls, self.rnn_ver, self.rnn_hor], feed_dict)
-            #
-            #
-            filename = os.path.basename(img_file)
-            arr_str = os.path.splitext(filename)
-            #
-            # image
-            r = Image.fromarray(img_data[0][:,:,0] *255).convert('L')
-            g = Image.fromarray(img_data[0][:,:,1] *255).convert('L')
-            b = Image.fromarray(img_data[0][:,:,2] *255).convert('L')
-            #
-            file_target = os.path.join(out_dir, arr_str[0] + '_predict.png')
-            img_target = Image.merge("RGB", (r, g, b))
-            img_target.save(file_target)
-            #
-            # trans
-            text_bbox = model_detect_data.transResults(r_cls, r_ver, r_hor, \
-                                                       meta.anchor_heights, meta.threshold)
-            #
-            model_detect_data.drawTextBox(file_target, text_bbox)
-            #
-    
+    # def predict(self, sess, img_file, out_dir = './results_prediction'):
+    #     #
+    #     # input data
+    #     img_data, feat_size, target_cls, target_ver, target_hor = \
+    #     model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
+    #     #
+    #     img_size = model_detect_data.getImageSize(img_file) # width, height
+    #     #
+    #     w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
+    #     #
+    #     # predication_result save-path
+    #     if not os.path.exists(out_dir): os.mkdir(out_dir)
+    #     #
+    #     with self.graph.as_default():
+    #         #
+    #         feed_dict = {self.x: img_data, self.w: w_arr}
+    #         #
+    #         r_cls, r_ver, r_hor = sess.run([self.rnn_cls, self.rnn_ver, self.rnn_hor], feed_dict)
+    #         #
+    #         #
+    #         filename = os.path.basename(img_file)
+    #         arr_str = os.path.splitext(filename)
+    #         #
+    #         # image
+    #         r = Image.fromarray(img_data[0][:,:,0] *255).convert('L')
+    #         g = Image.fromarray(img_data[0][:,:,1] *255).convert('L')
+    #         b = Image.fromarray(img_data[0][:,:,2] *255).convert('L')
+    #         #
+    #         file_target = os.path.join(out_dir, arr_str[0] + '_predict.png')
+    #         img_target = Image.merge("RGB", (r, g, b))
+    #         img_target.save(file_target)
+    #         #
+    #         # trans
+    #         text_bbox = model_detect_data.transResults(r_cls, r_ver, r_hor, \
+    #                                                    meta.anchor_heights, meta.threshold)
+    #         #
+    #         model_detect_data.drawTextBox(file_target, text_bbox)
+    #         #
+    #
     @staticmethod
     def z_define_graph_all(graph, train = True): # learn.ModeKeys.TRAIN  INFER
         #
@@ -134,6 +135,7 @@ class ModelDetect():
             w = tf.placeholder(tf.int32, (None,), name = 'w-input') # width
             #
             conv_feat, sequence_length = model_def.conv_feat_layers(x, w, train)   # train
+
             rnn_cls, rnn_ver, rnn_hor = model_def.rnn_detect_layers(conv_feat, sequence_length, len(meta.anchor_heights))
             #
             # print(rnn_cls.op.name)
@@ -180,104 +182,104 @@ class ModelDetect():
             #
             #
                 
-    def validate(self, step, training):
-        #
-        # get validation images
-        list_images_valid = model_detect_data.getFilesInDirect(meta.dir_images_valid, meta.str_dot_img_ext)
-        #
-        # valid_result save-path
-        if not os.path.exists(meta.dir_results_valid): os.mkdir(meta.dir_results_valid)
-        #
-        # if os.path.exists(dir_results): shutil.rmtree(dir_results)
-        # time.sleep(0.1)
-        # os.mkdir(dir_results)
-        #
-        # validation graph
-        self.graph = tf.Graph()
-        #
-        self.z_define_graph_all(self.graph, training)
-        #
-        with self.graph.as_default():
-            #
-            saver = tf.train.Saver()
-            #
-            # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.95)
-            # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            #
-            with tf.Session(config = self.z_sess_config) as sess:
-                #
-                tf.global_variables_initializer().run()
-                #
-                # restore with saved data
-                ckpt = tf.train.get_checkpoint_state(meta.model_detect_dir)
-                #
-                if ckpt and ckpt.model_checkpoint_path:
-                    saver.restore(sess, ckpt.model_checkpoint_path)
-                #
-                # pb
-                constant_graph = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names = \
-                                                                           ['rnn_cls','rnn_ver','rnn_hor'])
-                with tf.gfile.FastGFile(self.z_pb_file, mode='wb') as f:
-                    f.write(constant_graph.SerializeToString())
-                #
-                # variables
-                #
-                x = self.graph.get_tensor_by_name('x-input:0')
-                w = self.graph.get_tensor_by_name('w-input:0')
-                #
-                rnn_cls = self.graph.get_tensor_by_name('rnn_cls:0')
-                rnn_ver = self.graph.get_tensor_by_name('rnn_ver:0')
-                rnn_hor = self.graph.get_tensor_by_name('rnn_hor:0')
-                #
-                t_cls = self.graph.get_tensor_by_name('c-input:0')
-                t_ver = self.graph.get_tensor_by_name('v-input:0')
-                t_hor = self.graph.get_tensor_by_name('h-input:0')
-                #
-                loss = self.graph.get_tensor_by_name('loss:0')
-                #
-                # test
-                NumImages = len(list_images_valid)
-                curr = 0
-                for img_file in list_images_valid:
-                    #
-                    # input data
-                    img_data, feat_size, target_cls, target_ver, target_hor = \
-                    model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
-                    #
-                    img_size = model_detect_data.getImageSize(img_data[0]) # width, height
-                    #
-                    w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
-                    #
-                    feed_dict = {x: img_data, w: w_arr, \
-                                 t_cls: target_cls, t_ver: target_ver, t_hor: target_hor}
-                    #
-                    r_cls, r_ver, r_hor, loss_value = sess.run([rnn_cls, rnn_ver, rnn_hor, loss], feed_dict)
-                    #
-                    #
-                    curr += 1
-                    print('curr: %d / %d, loss: %f' % (curr, NumImages, loss_value))
-                    #
-                    filename = os.path.basename(img_file)
-                    arr_str = os.path.splitext(filename)
-                    #
-                    # image
-                    r = Image.fromarray(img_data[0][:,:,0] *255).convert('L')
-                    g = Image.fromarray(img_data[0][:,:,1] *255).convert('L')
-                    b = Image.fromarray(img_data[0][:,:,2] *255).convert('L')
-                    #
-                    file_target = os.path.join(meta.dir_results_valid, str(step) + '_' +arr_str[0] + '.png')
-                    img_target = Image.merge("RGB", (r, g, b))
-                    img_target.save(file_target)
-                    #
-                    # trans
-                    text_bbox = model_detect_data.transResults(r_cls, r_ver, r_hor, \
-                                                               meta.anchor_heights, meta.threshold)
-                    #
-                    model_detect_data.drawTextBox(file_target, text_bbox)
-                    #
-                #
-                print('validation finished')
-                #
+    # def validate(self, step, training):
+    #     #
+    #     # get validation images
+    #     list_images_valid = model_detect_data.getFilesInDirect(meta.dir_images_valid, meta.str_dot_img_ext)
+    #     #
+    #     # valid_result save-path
+    #     if not os.path.exists(meta.dir_results_valid): os.mkdir(meta.dir_results_valid)
+    #     #
+    #     # if os.path.exists(dir_results): shutil.rmtree(dir_results)
+    #     # time.sleep(0.1)
+    #     # os.mkdir(dir_results)
+    #     #
+    #     # validation graph
+    #     self.graph = tf.Graph()
+    #     #
+    #     self.z_define_graph_all(self.graph, training)
+    #     #
+    #     with self.graph.as_default():
+    #         #
+    #         saver = tf.train.Saver()
+    #         #
+    #         # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.95)
+    #         # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    #         #
+    #         with tf.Session(config = self.z_sess_config) as sess:
+    #             #
+    #             tf.global_variables_initializer().run()
+    #             #
+    #             # restore with saved data
+    #             ckpt = tf.train.get_checkpoint_state(meta.model_detect_dir)
+    #             #
+    #             if ckpt and ckpt.model_checkpoint_path:
+    #                 saver.restore(sess, ckpt.model_checkpoint_path)
+    #             #
+    #             # pb
+    #             constant_graph = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names = \
+    #                                                                        ['rnn_cls','rnn_ver','rnn_hor'])
+    #             with tf.gfile.FastGFile(self.z_pb_file, mode='wb') as f:
+    #                 f.write(constant_graph.SerializeToString())
+    #             #
+    #             # variables
+    #             #
+    #             x = self.graph.get_tensor_by_name('x-input:0')
+    #             w = self.graph.get_tensor_by_name('w-input:0')
+    #             #
+    #             rnn_cls = self.graph.get_tensor_by_name('rnn_cls:0')
+    #             rnn_ver = self.graph.get_tensor_by_name('rnn_ver:0')
+    #             rnn_hor = self.graph.get_tensor_by_name('rnn_hor:0')
+    #             #
+    #             t_cls = self.graph.get_tensor_by_name('c-input:0')
+    #             t_ver = self.graph.get_tensor_by_name('v-input:0')
+    #             t_hor = self.graph.get_tensor_by_name('h-input:0')
+    #             #
+    #             loss = self.graph.get_tensor_by_name('loss:0')
+    #             #
+    #             # test
+    #             NumImages = len(list_images_valid)
+    #             curr = 0
+    #             for img_file in list_images_valid:
+    #                 #
+    #                 # input data
+    #                 img_data, feat_size, target_cls, target_ver, target_hor = \
+    #                 model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
+    #                 #
+    #                 img_size = model_detect_data.getImageSize(img_data[0]) # width, height
+    #                 #
+    #                 w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
+    #                 #
+    #                 feed_dict = {x: img_data, w: w_arr, \
+    #                              t_cls: target_cls, t_ver: target_ver, t_hor: target_hor}
+    #                 #
+    #                 r_cls, r_ver, r_hor, loss_value = sess.run([rnn_cls, rnn_ver, rnn_hor, loss], feed_dict)
+    #                 #
+    #                 #
+    #                 curr += 1
+    #                 print('curr: %d / %d, loss: %f' % (curr, NumImages, loss_value))
+    #                 #
+    #                 filename = os.path.basename(img_file)
+    #                 arr_str = os.path.splitext(filename)
+    #                 #
+    #                 # image
+    #                 r = Image.fromarray(img_data[0][:,:,0] *255).convert('L')
+    #                 g = Image.fromarray(img_data[0][:,:,1] *255).convert('L')
+    #                 b = Image.fromarray(img_data[0][:,:,2] *255).convert('L')
+    #                 #
+    #                 file_target = os.path.join(meta.dir_results_valid, str(step) + '_' +arr_str[0] + '.png')
+    #                 img_target = Image.merge("RGB", (r, g, b))
+    #                 img_target.save(file_target)
+    #                 #
+    #                 # trans
+    #                 text_bbox = model_detect_data.transResults(r_cls, r_ver, r_hor, \
+    #                                                            meta.anchor_heights, meta.threshold)
+    #                 #
+    #                 model_detect_data.drawTextBox(file_target, text_bbox)
+    #                 #
+    #             #
+    #             print('validation finished')
+    #             #
         
     
     def train_and_valid(self, data_path='train/'):
@@ -298,7 +300,7 @@ class ModelDetect():
             saver = tf.train.Saver()
             #
             # GPU显存使用0.8
-            self.z_sess_config.gpu_options.per_process_gpu_memory_fraction = 0.8
+            self.z_sess_config.gpu_options.per_process_gpu_memory_fraction = 0.95
             with tf.Session(config = self.z_sess_config) as sess:
                 #
                 tf.global_variables_initializer().run()
@@ -319,48 +321,50 @@ class ModelDetect():
                 t_cls = self.z_graph.get_tensor_by_name('c-input:0')
                 t_ver = self.z_graph.get_tensor_by_name('v-input:0')
                 t_hor = self.z_graph.get_tensor_by_name('h-input:0')
+
+                rnn_cls = self.z_graph.get_tensor_by_name('rnn_cls:0')
+                rnn_ver = self.z_graph.get_tensor_by_name('rnn_ver:0')
+                rnn_hor = self.z_graph.get_tensor_by_name('rnn_hor:0')
                 #
                 loss = self.z_graph.get_tensor_by_name('loss:0')
                 #
                 global_step = self.z_graph.get_tensor_by_name('global_step:0')
                 learning_rate = self.z_graph.get_tensor_by_name('learning_rate:0')
                 train_op = self.z_graph.get_tensor_by_name('train_op/control_dependency:0')
+                conv_feat = self.z_graph.get_tensor_by_name('conv_comm/conv_feat:0')
                 #
                 
                 #
                 print('begin to train ...')
+                print(tf.get_collection('weight'))
                 #
                 # start training
                 start_time = time.time()
                 begin_time = start_time 
-                #
+
                 for i in range(TRAINING_STEPS):
-                    #
+
                     img_file = random.choice(list_images_train)
-                    #
-                    # print(img_file)
-                    #
-                    # input data
-                    img_data, feat_size, target_cls, target_ver, target_hor = \
-                    model_detect_data.getImageAndTargets(img_file, meta.anchor_heights)
-                    img_size = model_detect_data.getImageSize(img_data[0]) # width, height
+                    img_data,rate = model_detect_data.transform_image(img_file)
+                    feat = sess.run(conv_feat,feed_dict={
+                        x: [img_data],
+                        w: np.ones(1),
+                        t_cls:np.ones((1,1,1)),
+                        t_ver:np.ones((1,1,1)),
+                        t_hor:np.ones((1,1,1))
+                    })
+                    feat_size = (feat.shape[0], feat.shape[1])
+
+                    img_data, target_cls, target_ver, target_hor = \
+                    model_detect_data.getImageAndTargets(img_file, meta.anchor_heights, feat_size)
+                    img_size = img_data[0].shape[1],img_data[0].shape[0] # width, height
                     #
                     w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
                     #
                     #
                     feed_dict = {x: img_data, w: w_arr, \
                                  t_cls: target_cls, t_ver: target_ver, t_hor: target_hor}
-                    #                    
-                    #print(img_data.size)
-                    #print(feat_size)
-                    #print(w_arr)
-                    #
-                    #rnn_cls_v = sess.run(seq_len, feed_dict)
-                    #print(len(rnn_cls_v))
-                    #
-                    #loss_value = sess.run(loss, feed_dict)
-                    #print('sess.run, loss = %g' % loss_value)
-                    #
+
                     _, loss_value, step, lr = sess.run([train_op, loss, global_step, learning_rate], \
                                                         feed_dict)
                     #
@@ -368,6 +372,7 @@ class ModelDetect():
                         #
                         curr_time = time.time()            
                         #
+
                         print('step: %d, loss: %g, lr: %g, sect_time: %.1f, total_time: %.1f, %s' %
                               (step, loss_value, lr,
                                curr_time - begin_time,
@@ -375,17 +380,57 @@ class ModelDetect():
                                os.path.basename(img_file)))
                         #
                         begin_time = curr_time
-                        #                        
-                    #
-                    # validation
-                    # if step % self.z_valid_freq == 0:
-                    #     #
-                    #     # ckpt
-                    #     saver.save(sess, os.path.join(meta.model_detect_dir, meta.model_detect_name), \
-                    #                global_step = step)
-                    #     #
-                    #     self.validate(step, self.z_valid_option)
-                    #     #
+                        #
+
+
+
+                    if step % 1000 == 0:
+                        path = 'result/' + str(step) + '/'
+                        if not os.path.exists(path): os.mkdir(path)
+                        show_list = model_detect_data.getFilesInDirect('result/')
+                        count = 0
+                        for show_path in show_list:
+                            img_data, rate = model_detect_data.transform_image(show_path)
+                            feat = sess.run(conv_feat, feed_dict={
+                                x: [img_data],
+                                w: np.ones(1),
+                                t_cls: np.ones((1, 1, 1)),
+                                t_ver: np.ones((1, 1, 1)),
+                                t_hor: np.ones((1, 1, 1))
+                            })
+                            feat_size = (feat.shape[0], feat.shape[1])
+
+                            img_data, target_cls, target_ver, target_hor = \
+                                model_detect_data.getImageAndTargets(show_path, meta.anchor_heights, feat_size)
+                            img_size = img_data[0].shape[1], img_data[0].shape[0]  # width, height
+                            #
+                            w_arr = np.ones((feat_size[0],), dtype=np.int32) * img_size[0]
+                            #
+                            #
+                            feed_dict = {x: img_data, w: w_arr, t_cls: target_cls, t_ver: target_ver, t_hor: target_hor}
+                            #
+                            r_cls, r_ver, r_hor = sess.run([rnn_cls, rnn_ver, rnn_hor], feed_dict)
+                            #
+
+                            #
+                            # image
+
+                            #
+
+                            file_target = path + str(count) + '.png'
+                            count += 1
+                            img, rate = model_detect_data.transform_image(show_path)
+                            misc.imsave(file_target, img)
+                            # trans
+                            text_bbox = model_detect_data.transResults(r_cls, r_ver, r_hor, meta.anchor_heights, meta.threshold)
+                            #
+                            model_detect_data.drawTextBox(file_target, text_bbox)
+                            #
+                        #
+                            print('validation finished')
+
+
+
         #
 
 #

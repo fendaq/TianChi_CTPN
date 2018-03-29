@@ -89,6 +89,7 @@ def conv_feat_layers(inputs, width, training):
         inputs = layers.conv_layer(inputs, layer_params[9], training)
         #
         conv_feat = tf.squeeze(inputs, axis = 0, name = 'conv_feat') # squeeze
+        print(conv_feat.name)
         #      
     #
     # Calculate resulting sequence length from original image widths
@@ -109,7 +110,7 @@ def conv_feat_layers(inputs, width, training):
     w = tf.cast(w, tf.int32)
     #
     # Vectorize
-    sequence_length = tf.reshape(w, [-1], name='seq_len') 
+    sequence_length = tf.reshape(w, [-1], name='seq_len')
     #
     
     #
