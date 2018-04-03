@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/OCR-DETECTION-CTPN-master.iml" filepath="$PROJECT_DIR$/.idea/OCR-DETECTION-CTPN-master.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ctpn.iml" filepath="$PROJECT_DIR$/.idea/ctpn.iml" />
     </modules>
   </component>
 </project>
