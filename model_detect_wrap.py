@@ -79,12 +79,7 @@ class ModelDetect():
         return 0
         #
         
-    def create_session_for_prediction(self):
-        #
-        with self.graph.as_default():
-            sess = tf.Session(config = self.z_sess_config)
-            
-            return sess
+
         #
 
     # def predict(self, sess, img_file, out_dir = './results_prediction'):
@@ -322,6 +317,7 @@ class ModelDetect():
                 t_ver = self.z_graph.get_tensor_by_name('v-input:0')
                 t_hor = self.z_graph.get_tensor_by_name('h-input:0')
 
+                something = self.z_graph.get_tensor_by_name('Cast_1:0')
                 rnn_cls = self.z_graph.get_tensor_by_name('rnn_cls:0')
                 rnn_ver = self.z_graph.get_tensor_by_name('rnn_ver:0')
                 rnn_hor = self.z_graph.get_tensor_by_name('rnn_hor:0')
@@ -332,11 +328,11 @@ class ModelDetect():
                 learning_rate = self.z_graph.get_tensor_by_name('learning_rate:0')
                 train_op = self.z_graph.get_tensor_by_name('train_op/control_dependency:0')
                 conv_feat = self.z_graph.get_tensor_by_name('conv_comm/conv_feat:0')
+                squeeze = self.z_graph.get_tensor_by_name('seq_len:0')
                 #
                 
                 #
                 print('begin to train ...')
-                print(tf.get_collection('weight'))
                 #
                 # start training
                 start_time = time.time()
@@ -349,37 +345,48 @@ class ModelDetect():
                     feat = sess.run(conv_feat,feed_dict={
                         x: [img_data],
                         w: np.ones(1),
-                        t_cls:np.ones((1,1,1)),
-                        t_ver:np.ones((1,1,1)),
-                        t_hor:np.ones((1,1,1))
                     })
                     feat_size = (feat.shape[0], feat.shape[1])
+                    print('feat_size:',feat_size)
 
                     img_data, target_cls, target_ver, target_hor = \
                     model_detect_data.getImageAndTargets(img_file, meta.anchor_heights, feat_size)
                     img_size = img_data[0].shape[1],img_data[0].shape[0] # width, height
-                    #
+
+                    print('img_size:',img_size)
                     w_arr = np.ones((feat_size[0],), dtype = np.int32) * img_size[0]
+                    # print('w_arr:', w_arr)
                     #
                     #
                     feed_dict = {x: img_data, w: w_arr, \
                                  t_cls: target_cls, t_ver: target_ver, t_hor: target_hor}
 
-                    _, loss_value, step, lr = sess.run([train_op, loss, global_step, learning_rate], \
-                                                        feed_dict)
-                    #
-                    if i % 1 == 0:
-                        #
-                        curr_time = time.time()            
-                        #
+                    _, loss_value, step, lr,something_ ,w_s= sess.run([train_op,
+                                                                   loss,
+                                                                   global_step,
+                                                                   learning_rate,
+                                                                   something,
+                                                                   squeeze], \
 
-                        print('step: %d, loss: %g, lr: %g, sect_time: %.1f, total_time: %.1f, %s' %
-                              (step, loss_value, lr,
-                               curr_time - begin_time,
-                               curr_time - start_time,
-                               os.path.basename(img_file)))
-                        #
-                        begin_time = curr_time
+                                                        feed_dict)
+
+                    print('w.shape:',something_.shape)
+                    print('w_s.shape:',w_s.shape)
+                    print(w_s[0])
+                    print(w_s[1])
+                    #
+                    # if i % 1 == 0:
+                    #     #
+                    #     curr_time = time.time()
+                    #     #
+                    #
+                    #     print('step: %d, loss: %g, lr: %g, sect_time: %.1f, total_time: %.1f, %s' %
+                    #           (step, loss_value, lr,
+                    #            curr_time - begin_time,
+                    #            curr_time - start_time,
+                    #            os.path.basename(img_file)))
+                    #     #
+                    #     begin_time = curr_time
                         #
 
 

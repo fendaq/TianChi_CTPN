@@ -108,9 +108,11 @@ def conv_feat_layers(inputs, width, training):
     w = tf.ceil(w)
     #
     w = tf.cast(w, tf.int32)
+    print(w.name)
     #
     # Vectorize
     sequence_length = tf.reshape(w, [-1], name='seq_len')
+    print(sequence_length.name)
     #
     
     #

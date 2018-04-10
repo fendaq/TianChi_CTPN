@@ -255,9 +255,9 @@ def getImageAndTargets(img_file, anchor_heights, feat_size):
     # texts
     txt_list = getListContents(getTargetTxtFile(img_file), rate)
     #
-    
+
     # targets
-    # width, height    
+    # width, height
     #
     # ///2, ///2, ///2,
     # ///2, ///2, //3, -2
@@ -279,10 +279,10 @@ def getImageAndTargets(img_file, anchor_heights, feat_size):
     #
     # anchor_width = 8
     #
-    ash = 12  # anchor stride - height
+    ash = 8  # anchor stride - height
     asw = 8   # anchor stride - width
     #
-    hc_start = 18
+    hc_start = 4
     wc_start = 4
     #
     
@@ -311,10 +311,10 @@ def transResults(r_cls, r_ver, r_hor, anchor_heights, threshold):
     #
     anchor_width = 8
     #
-    ash = 12  # anchor stride - height
+    ash = 8  # anchor stride - height
     asw = 8   # anchor stride - width
     #
-    hc_start = 18
+    hc_start = 4
     wc_start = 4
     #
     
