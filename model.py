@@ -76,16 +76,14 @@ class Model():
                 optimizer = tf.train.AdamOptimizer(learning_rate = learning_rate,
                                                    beta1 = MOMENTUM,name='train_op').minimize(loss,global_step=global_step,var_list=vars_to_train)
 
-    def save(self,sess,path='models/ctpn/'):
+    def save(self,step,sess, path='models/ctpn/'):
         saver = tf.train.Saver(tf.trainable_variables())
-        now = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
-        path = path + now + '/'
-        os.mkdir(path)
-        saver.save(sess,path)
+        now = time.strftime('%Y-%m-%d',time.localtime(time.time()))
+        path = path + now + '-' + str(step) + '/' + 'model.ckpt'
+        os.makedirs(path)
+        saver.save(sess, path)
         logging.info("保存成功！")
 
-
-        saver.save(sess,save_path=path)
 
     def restore(self, sess, ckpt_path):
 
@@ -164,8 +162,8 @@ class Model():
                         #       (step, total_loss/50, lr))
                         total_loss = 0
 
-                    if i in [15, 50000, 60000, 70000, 80000, 90000]:
-                        self.save(sess)
+                    if i in [50000, 60000, 70000, 80000, 90000]:
+                        self.save(sess=sess,step=i)
 
                     if  i % 5000 == 0:
                         path = 'result/' + str(i) + '/'
@@ -187,9 +185,9 @@ class Model():
                                          self.t_ver: target_ver,
                                          self.t_hor: target_hor,
                                          self.sequence_length: np.ones([feat_size[0]]) * 64}
-                            #
+
                             r_cls, r_ver, r_hor = sess.run([self.rnn_cls, self.rnn_ver, self.rnn_hor], feed_dict)
-                            #
+
                             file_target = path + str(count) + '.png'
                             count += 1
                             img, rate = model_detect_data.transform_image(show_path)
@@ -206,3 +204,7 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = '0' #使用 GPU 0
     model = Model()
     model.train()
+
+
+
+
