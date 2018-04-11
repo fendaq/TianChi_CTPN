@@ -282,7 +282,7 @@ class ModelDetect():
         # get training images
         list_images_train = model_detect_data.getFilesInDirect(data_path)
         #      
-        # model save-path
+        # models save-path
         if not os.path.exists(meta.model_detect_dir): os.mkdir(meta.model_detect_dir)
         #                   
         # training graph

@@ -18,59 +18,60 @@ def resnet_layers(input, output_stride=8, training=True):
 
 
 def rnn_detect_layers(conv_feat, sequence_length, num_anchors):
-    #
-    # Input features is [batchSize paddedSeqLen numFeatures]
-    #
-    #
-    rnn_size = 256  # 256, 512
-    fc_size = 512  # 256, 384, 512
-    #
-    #
-    # Transpose to time-major order for efficiency
-    #  --> [paddedSeqLen batchSize numFeatures]
-    #
-    # 这里总是出错
-    rnn_sequence = tf.transpose(conv_feat, perm=[1, 0, 2], name='time_major')
-    rnn1 = rnn_layer(rnn_sequence, sequence_length, rnn_size, 'bdrnn1')
-    rnn2 = rnn_layer(rnn1, sequence_length, rnn_size, 'bdrnn2')
-    # rnn3 = rnn_layer(rnn2, sequence_length, rnn_size, 'bdrnn3')
-    #
-    weight_initializer = tf.contrib.layers.variance_scaling_initializer()
-    bias_initializer = tf.constant_initializer(value=0.0)
-    #
-    rnn_feat = tf.layers.dense(rnn2, fc_size,
-                               activation=tf.nn.relu,
-                               kernel_initializer=weight_initializer,
-                               bias_initializer=bias_initializer,
-                               name='rnn_feat')
-    #
-    # out
-    #
-    rnn_cls = tf.layers.dense(rnn_feat, num_anchors * 2,
-                              activation=tf.nn.sigmoid,
-                              kernel_initializer=weight_initializer,
-                              bias_initializer=bias_initializer,
-                              name='text_cls')
-    #
-    rnn_ver = tf.layers.dense(rnn_feat, num_anchors * 2,
-                              activation=tf.nn.tanh,
-                              kernel_initializer=weight_initializer,
-                              bias_initializer=bias_initializer,
-                              name='text_ver')
-    #
-    rnn_hor = tf.layers.dense(rnn_feat, num_anchors * 2,
-                              activation=tf.nn.tanh,
-                              kernel_initializer=weight_initializer,
-                              bias_initializer=bias_initializer,
-                              name='text_hor')
-    #
-    # dense operates on last dim
-    #
+    with tf.variable_scope("RNN_module"):
+        #
+        # Input features is [batchSize paddedSeqLen numFeatures]
+        #
+        #
+        rnn_size = 256  # 256, 512
+        fc_size = 512  # 256, 384, 512
+        #
+        #
+        # Transpose to time-major order for efficiency
+        #  --> [paddedSeqLen batchSize numFeatures]
+        #
+        # 这里总是出错
+        rnn_sequence = tf.transpose(conv_feat, perm=[1, 0, 2], name='time_major')
+        rnn1 = rnn_layer(rnn_sequence, sequence_length, rnn_size, 'bdrnn1')
+        rnn2 = rnn_layer(rnn1, sequence_length, rnn_size, 'bdrnn2')
+        # rnn3 = rnn_layer(rnn2, sequence_length, rnn_size, 'bdrnn3')
+        #
+        weight_initializer = tf.contrib.layers.variance_scaling_initializer()
+        bias_initializer = tf.constant_initializer(value=0.0)
+        #
+        rnn_feat = tf.layers.dense(rnn2, fc_size,
+                                   activation=tf.nn.relu,
+                                   kernel_initializer=weight_initializer,
+                                   bias_initializer=bias_initializer,
+                                   name='rnn_feat')
+        #
+        # out
+        #
+        rnn_cls = tf.layers.dense(rnn_feat, num_anchors * 2,
+                                  activation=tf.nn.sigmoid,
+                                  kernel_initializer=weight_initializer,
+                                  bias_initializer=bias_initializer,
+                                  name='text_cls')
+        #
+        rnn_ver = tf.layers.dense(rnn_feat, num_anchors * 2,
+                                  activation=tf.nn.tanh,
+                                  kernel_initializer=weight_initializer,
+                                  bias_initializer=bias_initializer,
+                                  name='text_ver')
+        #
+        rnn_hor = tf.layers.dense(rnn_feat, num_anchors * 2,
+                                  activation=tf.nn.tanh,
+                                  kernel_initializer=weight_initializer,
+                                  bias_initializer=bias_initializer,
+                                  name='text_hor')
+        #
+        # dense operates on last dim
+        #
 
-    #
-    rnn_cls = tf.transpose(rnn_cls, perm=[1, 0, 2], name='rnn_cls')
-    rnn_ver = tf.transpose(rnn_ver, perm=[1, 0, 2], name='rnn_ver')
-    rnn_hor = tf.transpose(rnn_hor, perm=[1, 0, 2], name='rnn_hor')
+        #
+        rnn_cls = tf.transpose(rnn_cls, perm=[1, 0, 2], name='rnn_cls')
+        rnn_ver = tf.transpose(rnn_ver, perm=[1, 0, 2], name='rnn_ver')
+        rnn_hor = tf.transpose(rnn_hor, perm=[1, 0, 2], name='rnn_hor')
     #
     return rnn_cls, rnn_ver, rnn_hor
 
@@ -195,3 +196,24 @@ def detect_loss(rnn_cls, rnn_ver, rnn_hor, target_cls, target_ver, target_hor):
     #
     return loss
     #
+
+
+def get_variables_to_train(include=None, exclude=None):
+    if include is None:
+        # 包括所有的变量
+        vars_to_include = tf.trainable_variables()
+    else:
+        if not isinstance(include,(list,tuple)):
+            raise TypeError('include 必须是一个list或者tuple')
+        vars_to_include = []
+        for scope in include:
+            vars_to_include += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,scope=scope)
+
+    vars_to_exclude = set()
+    if exclude is not None:
+        if not isinstance(exclude,(list,tuple)):
+            raise TypeError('exclude 必须是一个list或者tuple')
+        for scope in exclude:
+            vars_to_exclude |= set(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,scope=scope))
+
+    return [v for v in vars_to_include if v not in vars_to_exclude]

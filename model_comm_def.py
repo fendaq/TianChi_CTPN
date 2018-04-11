@@ -6,7 +6,7 @@ import zoo_layers as layers
 
 
 #
-# model
+# models
 #
 def conv_feat_layers(inputs, width, training):
     #
